@@ -4,6 +4,9 @@ import logging
 import random
 import urllib
 import urllib2
+import urllib2
+import json as simplejson
+
 
 # for sending images
 from PIL import Image
@@ -14,7 +17,7 @@ from google.appengine.api import urlfetch
 from google.appengine.ext import ndb
 import webapp2
 
-TOKEN = 'YOUR_BOT_TOKEN_HERE'
+TOKEN = '128892439:AAEZNHflVFxgqBorA3Bo240iDvTJn_MEY3k'
 
 BASE_URL = 'https://api.telegram.org/bot' + TOKEN + '/'
 
@@ -83,12 +86,26 @@ class WebhookHandler(webapp2.RequestHandler):
             logging.info('no text')
             return
 
+
+        def image(msg = None, img = None):
+            if msg:
+                resp = urllib2.urlopen(BASE_URL + 'sendMessage', urllib.urlencode({
+                    'chat_id': str(chat_id),
+                    'text': msg.encode('utf-8'),
+                    'disable_web_page_preview': 'false',
+                    })).read()
+            else:
+                logging.error('no msg or img specified')
+                resp = None
+            logging.info('send response:')
+            logging.info(resp)
+
         def reply(msg=None, img=None):
             if msg:
                 resp = urllib2.urlopen(BASE_URL + 'sendMessage', urllib.urlencode({
                     'chat_id': str(chat_id),
                     'text': msg.encode('utf-8'),
-                    'disable_web_page_preview': 'true',
+                    'disable_web_page_preview': 'false',
                     'reply_to_message_id': str(message_id),
                 })).read()
             elif img:
@@ -113,13 +130,32 @@ class WebhookHandler(webapp2.RequestHandler):
                 reply('Bot disabled')
                 setEnabled(chat_id, False)
             elif text == '/image':
-                img = Image.new('RGB', (512, 512))
-                base = random.randint(0, 16777216)
-                pixels = [base+i*j for i in range(512) for j in range(512)]  # generate sample image
-                img.putdata(pixels)
+                m = raw_input()
+                befor_keyowrd, keyword, after_keyword = m.partition('image/')
+                fetcher = urllib2.build_opener()
+                searchTerm = after_keyword
+                startIndex = 1
+                searchUrl = "http://ajax.googleapis.com/ajax/services/search/images?v=1.0&q=" + searchTerm + "&start=0" + startIndex
+                f = fetcher.open(searchUrl)
+                deserialized_output = simplejson.load(f)
+                #output = StringIO.StringIO()
+                #deserialized_output.save(output, 'JPEG')
+                #reply(deserialized_output = output.getvalue())
+
+                imageUrl = deserialized_output['responseData']['results'][0]['unescapedUrl']
+                file = cStringIO.StringIO(urllib.urlopen(imageUrl).read())
+                img = Image.open(file)
                 output = StringIO.StringIO()
-                img.save(output, 'JPEG')
-                reply(img=output.getvalue())
+                img.save(output,'JPEG')
+                reply(img = output.getvalue())
+
+                # img = Image.new('RGB', (512, 512))
+                # base = random.randint(0, 16777216)
+                # pixels = [base+i*j for i in range(512) for j in range(512)]  # generate sample image
+                # img.putdata(pixels)
+                # output = StringIO.StringIO()
+                # img.save(output, 'JPEG')
+                # reply(img=output.getvalue())
             else:
                 reply('What command?')
 
